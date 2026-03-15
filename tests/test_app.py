@@ -1,5 +1,7 @@
 """Tests for the FastAPI application."""
 
+import io
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,5 +21,6 @@ def test_health():
 
 def test_detect_not_implemented():
     """Detect endpoint raises NotImplementedError."""
+    dummy = io.BytesIO(b"fake image data")
     with pytest.raises(NotImplementedError):
-        client.post("/detect")
+        client.post("/detect", files={"image": ("test.png", dummy, "image/png")})
