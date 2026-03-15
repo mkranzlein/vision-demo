@@ -7,12 +7,24 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: python-semantic-release/python-semantic-release@v9
-        with:
-          github_token: ${{ secrets.RELEASE_TOKEN }}
+    - name: Generate GitHub App Token
+      id: generate_token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.RELEASE_APP_ID }}
+        private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        # Use the token from the previous step
+        token: ${{ steps.generate_token.outputs.token }}
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Python Semantic Release
+      uses: python-semantic-release/python-semantic-release@v10
+      with:
+        # Use the same token here to allow PSR to push back to main
+        github_token: ${{ steps.generate_token.outputs.token }}
+        push: true

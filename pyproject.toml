@@ -55,7 +55,17 @@ fail_under = 0
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
 major_on_zero = false
-branch = "main"
+
+[tool.semantic_release.branches.main]
+match = "main"
 
 [tool.semantic_release.changelog]
-generate = true
+mode = "update"
+insertion_flag = "<!-- version list -->"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+output_format = "md"
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = true
