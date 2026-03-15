@@ -1,6 +1,6 @@
 [project]
 name = "vision-demo"
-version = "1.0.0"
+version = "0.1.0"
 description = "End-to-end object detection demo with distributed training and inference"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -54,6 +54,7 @@ fail_under = 0
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
+allow_zero_version = true
 major_on_zero = false
 
 [tool.semantic_release.branches.main]
