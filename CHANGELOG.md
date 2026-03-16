@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.5.0 (2026-03-16)
+
+### Features
+
+- **infra**: Add minio docker compose stack, storage client, and minio-backed training
+  ([#11](https://github.com/mkranzlein/vision-demo/pull/11),
+  [`0c6a919`](https://github.com/mkranzlein/vision-demo/commit/0c6a919c07dc7d60930ef4bd7c9a055d66ef88bf))
+
+
 ## v0.4.0 (2026-03-16)
 
 ### Features
