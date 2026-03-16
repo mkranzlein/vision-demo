@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-03-16)
+
+### Features
+
+- **data**: Add coco vehicle data pipeline with download, filtering, and train/test split
+  ([#9](https://github.com/mkranzlein/vision-demo/pull/9),
+  [`e360775`](https://github.com/mkranzlein/vision-demo/commit/e36077580f499482e5420fba9fba4230fc5a0adc))
+
+
 ## v0.2.0 (2026-03-15)
 
 ### Features
