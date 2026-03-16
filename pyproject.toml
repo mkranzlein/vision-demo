@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "python-multipart>=0.0.9",
     "aiohttp>=3.13.3",
+    "tqdm>=4.67.3",
 ]
 
 [dependency-groups]
