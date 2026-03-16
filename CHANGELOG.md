@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.6.0 (2026-03-16)
+
+### Features
+
+- **training**: Add DDP support to training script
+  ([#12](https://github.com/mkranzlein/vision-demo/pull/12),
+  [`5f5426e`](https://github.com/mkranzlein/vision-demo/commit/5f5426e68631ef3728d5f6060d0084e83d7f41c1))
+
+
 ## v0.5.0 (2026-03-16)
 
 ### Features
