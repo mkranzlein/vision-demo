@@ -64,16 +64,25 @@ python scripts/upload_to_minio.py
 
 ### Training
 
-Train locally from disk:
+The training script supports both single-GPU and distributed (DDP) modes, reading
+data from local disk or MinIO.
+
+Single GPU:
 
 ```bash
 python scripts/train.py
 ```
 
+Distributed (DDP via torchrun):
+
+```bash
+torchrun --nproc_per_node=1 scripts/train.py
+```
+
 Train from MinIO (simulates cloud training):
 
 ```bash
-python scripts/train.py --from-minio
+torchrun --nproc_per_node=1 scripts/train.py --from-minio
 ```
 
 Options: `--epochs`, `--batch-size`, `--lr`, `--sample` (fraction of data to use)
