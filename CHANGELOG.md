@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.7.0 (2026-03-16)
+
+### Features
+
+- **api**: Add MLflow tracking and inference endpoint
+  ([#13](https://github.com/mkranzlein/vision-demo/pull/13),
+  [`3943caa`](https://github.com/mkranzlein/vision-demo/commit/3943caa79d3b9321a8ceb1d7ead9a046b21f84d1))
+
+
 ## v0.6.0 (2026-03-16)
 
 ### Features
