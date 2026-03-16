@@ -52,8 +52,10 @@ This starts:
 
 - **MinIO** — S3-compatible storage on `localhost:9000` (API) and `localhost:9001` (console UI)
 - **MLflow** — Experiment tracking on `localhost:5000`, artifacts stored in MinIO
+- **Prometheus** — Metrics collection on `localhost:9090`, scrapes the inference API
+- **Grafana** — Dashboards on `localhost:3000`, pre-configured with a Vision Demo API dashboard
 
-Default credentials: `minioadmin` / `minioadmin`
+Default credentials: `minioadmin` / `minioadmin` (MinIO), `admin` / `admin` (Grafana)
 
 ### Uploading data to MinIO
 
@@ -104,3 +106,7 @@ Endpoints:
 - `POST /detect` — upload an image, get back bounding box detections
 
 The API loads the model checkpoint from `models/detector.pth` on first request.
+
+The API exposes a `/metrics` endpoint for Prometheus. When the Docker Compose stack is running,
+Prometheus scrapes these metrics and Grafana displays them in a pre-built dashboard with panels
+for request rate, latency percentiles (p50/p95/p99), in-flight requests, error rate, and response size.
