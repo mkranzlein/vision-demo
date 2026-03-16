@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.0 (2026-03-16)
+
+### Features
+
+- **monitoring**: Add Prometheus and Grafana with pre-built API dashboard
+  ([#14](https://github.com/mkranzlein/vision-demo/pull/14),
+  [`0de0130`](https://github.com/mkranzlein/vision-demo/commit/0de0130c78a4dc9043cefd332c176f647df35a69))
+
+
 ## v0.7.0 (2026-03-16)
 
 ### Features
