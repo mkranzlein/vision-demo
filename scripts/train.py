@@ -1,21 +1,26 @@
 """Training script for Faster R-CNN vehicle detector.
 
-Trains on local data or data pulled from MinIO.
+Supports single-GPU and DDP multi-GPU training. Reads data from local disk or MinIO.
 
 Usage:
     python scripts/train.py
     python scripts/train.py --epochs 5 --batch-size 4 --lr 0.005
     python scripts/train.py --from-minio
+    torchrun --nproc_per_node=1 scripts/train.py
 """
 
 import argparse
 import logging
+import os
 import tempfile
 import time
 from pathlib import Path
 
 import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: N817
 from torch.utils.data import DataLoader, Subset
+from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 
 from vision_demo.data.dataset import CocoVehicleDataset, get_transforms
@@ -75,6 +80,34 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch):
     return epoch_loss
 
 
+def is_distributed() -> bool:
+    """Check if the script was launched with torchrun/DDP."""
+    return "RANK" in os.environ
+
+
+def get_rank() -> int:
+    """Return the global rank of this process (0 if not distributed)."""
+    return int(os.environ.get("RANK", 0))
+
+
+def is_main_process() -> bool:
+    """Return True if this is rank 0 (or non-distributed)."""
+    return get_rank() == 0
+
+
+def setup_distributed():
+    """Initialize the DDP process group."""
+    dist.init_process_group(backend="nccl")
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    return local_rank
+
+
+def cleanup_distributed():
+    """Destroy the DDP process group."""
+    dist.destroy_process_group()
+
+
 def main():
     """Run training."""
     parser = argparse.ArgumentParser(description="Train Faster R-CNN vehicle detector.")
@@ -92,8 +125,17 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=None, help="Directory to save model checkpoint.")
     args = parser.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info("Using device: %s", device)
+    # DDP setup
+    distributed = is_distributed()
+    local_rank = 0
+    if distributed:
+        local_rank = setup_distributed()
+        if is_main_process():
+            logger.info("DDP initialized: %d processes.", dist.get_world_size())
+
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
+    if is_main_process():
+        logger.info("Using device: %s", device)
 
     # Resolve data directory
     data_dir = args.data_dir
@@ -102,10 +144,12 @@ def main():
 
         client = get_client(endpoint=args.minio_endpoint)
         data_dir = Path(tempfile.mkdtemp(prefix="vision_demo_"))
-        logger.info("Downloading training data from MinIO to %s...", data_dir)
+        if is_main_process():
+            logger.info("Downloading training data from MinIO to %s...", data_dir)
         download_directory(client, args.minio_bucket, "data/train/images", data_dir / "train" / "images")
         download_directory(client, args.minio_bucket, "data/train", data_dir / "train")
-        logger.info("MinIO download complete.")
+        if is_main_process():
+            logger.info("MinIO download complete.")
 
     # Dataset
     train_dataset = CocoVehicleDataset(data_dir / "train", transforms=get_transforms(train=True))
@@ -113,12 +157,16 @@ def main():
         n = int(len(train_dataset) * args.sample)
         indices = torch.randperm(len(train_dataset))[:n].tolist()
         train_dataset = Subset(train_dataset, indices)
-    logger.info("Training samples: %d", len(train_dataset))
+    if is_main_process():
+        logger.info("Training samples: %d", len(train_dataset))
 
+    # Sampler and DataLoader
+    sampler = DistributedSampler(train_dataset) if distributed else None
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=(sampler is None),
+        sampler=sampler,
         num_workers=args.num_workers,
         collate_fn=collate_fn,
         pin_memory=True,
@@ -127,7 +175,10 @@ def main():
     # Model
     model = create_model()
     model.to(device)
-    logger.info("Model loaded on %s.", device)
+    if distributed:
+        model = DDP(model, device_ids=[local_rank])
+    if is_main_process():
+        logger.info("Model loaded on %s.", device)
 
     # Optimizer
     params = [p for p in model.parameters() if p.requires_grad]
@@ -135,17 +186,25 @@ def main():
 
     # Training loop
     for epoch in range(1, args.epochs + 1):
+        if sampler is not None:
+            sampler.set_epoch(epoch)
         start = time.time()
         epoch_loss = train_one_epoch(model, optimizer, train_loader, device, epoch)
         elapsed = time.time() - start
-        logger.info("Epoch %d complete — loss: %.4f, time: %.1fs", epoch, epoch_loss, elapsed)
+        if is_main_process():
+            logger.info("Epoch %d complete — loss: %.4f, time: %.1fs", epoch, epoch_loss, elapsed)
 
-    # Save checkpoint
-    output_dir = args.output_dir or (args.data_dir.parent.parent / "models")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    checkpoint_path = output_dir / "detector.pth"
-    torch.save(model.state_dict(), checkpoint_path)
-    logger.info("Saved checkpoint to %s", checkpoint_path)
+    # Save checkpoint (rank 0 only)
+    if is_main_process():
+        output_dir = args.output_dir or (args.data_dir.parent.parent / "models")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_path = output_dir / "detector.pth"
+        state = model.module.state_dict() if distributed else model.state_dict()
+        torch.save(state, checkpoint_path)
+        logger.info("Saved checkpoint to %s", checkpoint_path)
+
+    if distributed:
+        cleanup_distributed()
 
 
 if __name__ == "__main__":
