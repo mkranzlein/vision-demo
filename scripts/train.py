@@ -16,6 +16,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import mlflow
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: N817
@@ -123,6 +124,8 @@ def main():
     parser.add_argument("--minio-endpoint", type=str, default="localhost:9000", help="MinIO endpoint.")
     parser.add_argument("--minio-bucket", type=str, default="vision-demo", help="MinIO bucket.")
     parser.add_argument("--output-dir", type=Path, default=None, help="Directory to save model checkpoint.")
+    parser.add_argument("--mlflow-uri", type=str, default="http://localhost:5000", help="MLflow tracking URI.")
+    parser.add_argument("--no-mlflow", action="store_true", help="Disable MLflow logging.")
     args = parser.parse_args()
 
     # DDP setup
@@ -184,6 +187,25 @@ def main():
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
+    # MLflow setup (rank 0 only)
+    use_mlflow = not args.no_mlflow and is_main_process()
+    if use_mlflow:
+        mlflow.set_tracking_uri(args.mlflow_uri)
+        mlflow.set_experiment("vehicle-detection")
+        mlflow.start_run()
+        mlflow.log_params(
+            {
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "lr": args.lr,
+                "momentum": args.momentum,
+                "weight_decay": args.weight_decay,
+                "sample": args.sample,
+                "from_minio": args.from_minio,
+                "num_training_samples": len(train_dataset),
+            }
+        )
+
     # Training loop
     for epoch in range(1, args.epochs + 1):
         if sampler is not None:
@@ -193,6 +215,8 @@ def main():
         elapsed = time.time() - start
         if is_main_process():
             logger.info("Epoch %d complete — loss: %.4f, time: %.1fs", epoch, epoch_loss, elapsed)
+        if use_mlflow:
+            mlflow.log_metrics({"loss": epoch_loss, "epoch_time_s": elapsed}, step=epoch)
 
     # Save checkpoint (rank 0 only)
     if is_main_process():
@@ -202,6 +226,9 @@ def main():
         state = model.module.state_dict() if distributed else model.state_dict()
         torch.save(state, checkpoint_path)
         logger.info("Saved checkpoint to %s", checkpoint_path)
+        if use_mlflow:
+            mlflow.log_artifact(str(checkpoint_path))
+            mlflow.end_run()
 
     if distributed:
         cleanup_distributed()

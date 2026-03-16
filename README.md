@@ -51,6 +51,7 @@ docker compose up -d
 This starts:
 
 - **MinIO** — S3-compatible storage on `localhost:9000` (API) and `localhost:9001` (console UI)
+- **MLflow** — Experiment tracking on `localhost:5000`, artifacts stored in MinIO
 
 Default credentials: `minioadmin` / `minioadmin`
 
@@ -85,4 +86,21 @@ Train from MinIO (simulates cloud training):
 torchrun --nproc_per_node=1 scripts/train.py --from-minio
 ```
 
+Training automatically logs to MLflow when the server is running. Use `--no-mlflow` to disable.
+
 Options: `--epochs`, `--batch-size`, `--lr`, `--sample` (fraction of data to use)
+
+### Inference API
+
+Start the API server:
+
+```bash
+uvicorn vision_demo.app:app --host 0.0.0.0 --port 8000
+```
+
+Endpoints:
+
+- `GET /health` — health check
+- `POST /detect` — upload an image, get back bounding box detections
+
+The API loads the model checkpoint from `models/detector.pth` on first request.
