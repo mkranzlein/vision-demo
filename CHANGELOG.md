@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-03-16)
+
+### Features
+
+- **model**: Add faster r-cnn training pipeline with dataset, detector, and training script
+  ([#10](https://github.com/mkranzlein/vision-demo/pull/10),
+  [`667219e`](https://github.com/mkranzlein/vision-demo/commit/667219e3999083940a5c40c33976ddcde19eb232))
+
+
 ## v0.3.0 (2026-03-16)
 
 ### Features
