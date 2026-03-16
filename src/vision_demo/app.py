@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 from fastapi import FastAPI, HTTPException, UploadFile
 from PIL import Image
+from prometheus_fastapi_instrumentator import Instrumentator
 from torchvision.transforms import v2
 
 from vision_demo.data.coco import CONTIGUOUS_TO_LABEL
@@ -17,6 +18,7 @@ from vision_demo.models import Detection, DetectionResponse
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Vision Demo", version=version("vision-demo"))
+Instrumentator(should_instrument_requests_inprogress=True).instrument(app).expose(app)
 
 # Model loaded once at startup
 _model = None
