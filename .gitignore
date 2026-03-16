@@ -218,8 +218,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Data & model artifacts
-data/
+# Data & model artifacts (top-level only, not src/vision_demo/data/)
+/data/
 models/
 *.pt
 *.pth
