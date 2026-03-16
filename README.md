@@ -29,7 +29,51 @@ data/coco/
 ├── train/
 │   ├── images/           # Training images
 │   └── annotations.json  # Filtered vehicle annotations
-└── val/
-    ├── images/           # Validation images
+├── val/
+│   ├── images/           # Validation images
+│   └── annotations.json  # Filtered vehicle annotations
+└── test/
+    ├── images/           # Test images (split from train)
     └── annotations.json  # Filtered vehicle annotations
 ```
+
+## Infrastructure
+
+The project uses Docker Compose for local infrastructure. MinIO provides S3-compatible
+object storage, simulating a cloud training workflow locally.
+
+### Starting services
+
+```bash
+docker compose up -d
+```
+
+This starts:
+
+- **MinIO** — S3-compatible storage on `localhost:9000` (API) and `localhost:9001` (console UI)
+
+Default credentials: `minioadmin` / `minioadmin`
+
+### Uploading data to MinIO
+
+After downloading the COCO data, upload it to MinIO:
+
+```bash
+python scripts/upload_to_minio.py
+```
+
+### Training
+
+Train locally from disk:
+
+```bash
+python scripts/train.py
+```
+
+Train from MinIO (simulates cloud training):
+
+```bash
+python scripts/train.py --from-minio
+```
+
+Options: `--epochs`, `--batch-size`, `--lr`, `--sample` (fraction of data to use)
