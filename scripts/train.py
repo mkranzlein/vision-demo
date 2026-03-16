@@ -1,14 +1,16 @@
-"""Basic training script for Faster R-CNN vehicle detector.
+"""Training script for Faster R-CNN vehicle detector.
 
-Trains on local data and prints loss per epoch to console.
+Trains on local data or data pulled from MinIO.
 
 Usage:
     python scripts/train.py
     python scripts/train.py --epochs 5 --batch-size 4 --lr 0.005
+    python scripts/train.py --from-minio
 """
 
 import argparse
 import logging
+import tempfile
 import time
 from pathlib import Path
 
@@ -84,14 +86,29 @@ def main():
     parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay.")
     parser.add_argument("--num-workers", type=int, default=4, help="DataLoader workers.")
     parser.add_argument("--sample", type=float, default=1.0, help="Fraction of training data to use (0.0-1.0).")
+    parser.add_argument("--from-minio", action="store_true", help="Pull training data from MinIO.")
+    parser.add_argument("--minio-endpoint", type=str, default="localhost:9000", help="MinIO endpoint.")
+    parser.add_argument("--minio-bucket", type=str, default="vision-demo", help="MinIO bucket.")
     parser.add_argument("--output-dir", type=Path, default=None, help="Directory to save model checkpoint.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Using device: %s", device)
 
+    # Resolve data directory
+    data_dir = args.data_dir
+    if args.from_minio:
+        from vision_demo.data.storage import download_directory, get_client
+
+        client = get_client(endpoint=args.minio_endpoint)
+        data_dir = Path(tempfile.mkdtemp(prefix="vision_demo_"))
+        logger.info("Downloading training data from MinIO to %s...", data_dir)
+        download_directory(client, args.minio_bucket, "data/train/images", data_dir / "train" / "images")
+        download_directory(client, args.minio_bucket, "data/train", data_dir / "train")
+        logger.info("MinIO download complete.")
+
     # Dataset
-    train_dataset = CocoVehicleDataset(args.data_dir / "train", transforms=get_transforms(train=True))
+    train_dataset = CocoVehicleDataset(data_dir / "train", transforms=get_transforms(train=True))
     if args.sample < 1.0:
         n = int(len(train_dataset) * args.sample)
         indices = torch.randperm(len(train_dataset))[:n].tolist()
